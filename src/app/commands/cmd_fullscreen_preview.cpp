@@ -234,6 +234,12 @@ protected:
             render.renderImage(m_doublebuf.get(), m_render.get(), m_pal, u, v,
                                255, BlendMode::NORMAL);
         break;
+      case TiledMode::SELECT:
+        for (v=y-h; v<displaySize.h+h; v+=h)
+          for (u=x-w; u<displaySize.w+w; u+=w)
+            render.renderImage(m_doublebuf.get(), m_render.get(), m_pal, u, v,
+                               255, BlendMode::NORMAL);
+        break;
     }
 
     convert_image_to_surface(m_doublebuf.get(), m_pal,

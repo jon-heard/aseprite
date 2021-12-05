@@ -890,6 +890,17 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
       spriteRect.w*3, spriteRect.h*3);
   }
 
+  if (m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w,   spriteRect.h);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, spriteRect.h);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w,   spriteRect.h*2);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, spriteRect.h*2);
+
+    enclosingRect = gfx::Rect(
+      spriteRect.x, spriteRect.y,
+      spriteRect.w*3, spriteRect.h*3);
+  }
+
   // Draw slices
   if (m_docPref.show.slices())
     drawSlices(g);

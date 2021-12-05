@@ -15,6 +15,7 @@ namespace filters {
     X_AXIS  = 1,
     Y_AXIS  = 2,
     BOTH    = 3,
+    SELECT  = 7,
   };
 
 } // namespace filters

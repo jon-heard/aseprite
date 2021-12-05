@@ -967,6 +967,9 @@
           <item command="TiledMode" text="@.view_tiled_mode_y">
             <param name="axis" value="y" />
           </item>
+          <item command="TiledMode" text="@.view_tiled_mode_select">
+            <param name="axis" value="select" />
+          </item>
         </menu>
         <item command="SymmetryMode" text="@.view_symmetry_options" group="view_canvas_helpers" />
         <separator />

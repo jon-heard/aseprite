@@ -44,6 +44,7 @@ void TiledModeCommand::onLoadParams(const Params& params)
   if (mode == "both") m_mode = filters::TiledMode::BOTH;
   else if (mode == "x") m_mode = filters::TiledMode::X_AXIS;
   else if (mode == "y") m_mode = filters::TiledMode::Y_AXIS;
+  else if (mode == "select") m_mode = filters::TiledMode::SELECT;
 }
 
 bool TiledModeCommand::onEnabled(Context* ctx)

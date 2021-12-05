@@ -12,6 +12,7 @@
 *.res
 .DS_Store
 .vs
+third_party
 
 # CMake output
 build

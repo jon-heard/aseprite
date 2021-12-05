@@ -160,6 +160,8 @@ void Param<filters::TiledMode>::fromString(const std::string& value)
     setValue(filters::TiledMode::X_AXIS);
   else if (base::utf8_icmp(value, "y") == 0)
     setValue(filters::TiledMode::Y_AXIS);
+  else if (base::utf8_icmp(value, "select") == 0)
+    setValue(filters::TiledMode::SELECT);
   else
     setValue(filters::TiledMode::NONE);
 }
