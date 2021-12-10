@@ -145,7 +145,8 @@ Editor::Editor(Doc* document, EditorFlags flags)
   , m_document(document)
   , m_sprite(m_document->sprite())
   , m_layer(m_sprite->root()->firstLayer())
-  , m_frame(frame_t(0))
+  , m_frames { -1, -1, -1, -1, -1, -1, -1, -1, -1 } // Initialize to invalid to recognize when initial setting happens
+  , m_frameViewIndex(0)
   , m_docPref(Preferences::instance().document(document))
   , m_tiledModeHelper(app::TiledModeHelper(m_docPref.tiled.mode(), m_sprite))
   , m_brushPreview(this)
@@ -387,15 +388,22 @@ void Editor::setLayer(const Layer* layer)
   updateStatusBar();
 }
 
-void Editor::setFrame(frame_t frame)
+void Editor::setFrame(frame_t newFrame)
 {
-  if (m_frame == frame)
+  if (frame() == newFrame)
     return;
 
   m_observers.notifyBeforeFrameChanged(this);
   {
     HideBrushPreview hide(m_brushPreview);
-    m_frame = frame;
+    // If "setFrame" for first time, set frame for ALL stored frames
+    if (m_frames[m_frameViewIndex] == -1) {
+      for (int i = 0; i < 9; i++) {
+        m_frames[i] = newFrame;
+      }
+    } else {
+      m_frames[m_frameViewIndex] = newFrame;
+    }
   }
   m_observers.notifyAfterFrameChanged(this);
 
@@ -413,7 +421,7 @@ void Editor::getSite(Site* site) const
   site->document(m_document);
   site->sprite(m_sprite);
   site->layer(m_layer);
-  site->frame(m_frame);
+  site->frame(frame());
 
   if (!m_selectedSlices.empty() &&
       getCurrentEditorInk()->isSlice()) {
@@ -563,8 +571,10 @@ void Editor::updateEditor(const bool restoreScrollPos)
   View::getView(this)->updateView(restoreScrollPos);
 }
 
-void Editor::drawOneSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& spriteRectToDraw, int dx, int dy)
+void Editor::drawOneSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& spriteRectToDraw, int dx, int dy, int frameViewIndex)
 {
+  frame_t frame = m_frames[frameViewIndex];
+
   // Clip from sprite and apply zoom
   gfx::Rect rc = m_sprite->bounds().createIntersection(spriteRectToDraw);
   rc = m_proj.apply(rc);
@@ -688,7 +698,7 @@ void Editor::drawOneSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& sprite
 
         Tag* tag = nullptr;
         if (m_docPref.onionskin.loopTag())
-          tag = m_sprite->tags().innerTag(m_frame);
+          tag = m_sprite->tags().innerTag(frame);
         opts.loopTag(tag);
 
         m_renderEngine->setOnionskin(opts);
@@ -703,11 +713,11 @@ void Editor::drawOneSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& sprite
         extraCel->cel(),
         extraCel->image(),
         extraCel->blendMode(),
-        m_layer, m_frame);
+        m_layer, frame);
     }
 
     m_renderEngine->renderSprite(
-      rendered.get(), m_sprite, m_frame, gfx::Clip(0, 0, rc2));
+      rendered.get(), m_sprite, frame, gfx::Clip(0, 0, rc2));
 
     m_renderEngine->removeExtraImage();
 
@@ -751,7 +761,7 @@ void Editor::drawOneSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& sprite
         tmp->drawRect(gfx::Rect(0, 0, 1, 1), paint);
       }
 
-      convert_image_to_surface(rendered.get(), m_sprite->palette(m_frame),
+      convert_image_to_surface(rendered.get(), m_sprite->palette(frame),
                                tmp.get(), 0, 0, 0, 0, rc2.w, rc2.h);
 
       if (newEngine) {
@@ -861,44 +871,83 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
     m_proj.applyY(m_sprite->height()));
   gfx::Rect enclosingRect = spriteRect;
 
-  // Draw the main sprite at the center.
-  drawOneSpriteUnclippedRect(g, rc, 0, 0);
+  if (m_docPref.tiled.mode() != filters::TiledMode::SELECT) {
+    // Draw the main sprite at the center.
+    drawOneSpriteUnclippedRect(g, rc, 0, 0);
 
-  // Document preferences
-  if (int(m_docPref.tiled.mode()) & int(filters::TiledMode::X_AXIS)) {
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w, 0);
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, 0);
+    // Document preferences
+    if (int(m_docPref.tiled.mode()) & int(filters::TiledMode::X_AXIS)) {
+      drawOneSpriteUnclippedRect(g, rc, spriteRect.w, 0);
+      drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, 0);
 
-    enclosingRect = gfx::Rect(spriteRect.x, spriteRect.y, spriteRect.w*3, spriteRect.h);
-  }
+      enclosingRect = gfx::Rect(spriteRect.x, spriteRect.y, spriteRect.w*3, spriteRect.h);
+    }
 
-  if (int(m_docPref.tiled.mode()) & int(filters::TiledMode::Y_AXIS)) {
-    drawOneSpriteUnclippedRect(g, rc, 0, spriteRect.h);
-    drawOneSpriteUnclippedRect(g, rc, 0, spriteRect.h*2);
+    if (int(m_docPref.tiled.mode()) & int(filters::TiledMode::Y_AXIS)) {
+      drawOneSpriteUnclippedRect(g, rc, 0, spriteRect.h);
+      drawOneSpriteUnclippedRect(g, rc, 0, spriteRect.h*2);
 
-    enclosingRect = gfx::Rect(spriteRect.x, spriteRect.y, spriteRect.w, spriteRect.h*3);
-  }
+      enclosingRect = gfx::Rect(spriteRect.x, spriteRect.y, spriteRect.w, spriteRect.h*3);
+    }
 
-  if (m_docPref.tiled.mode() == filters::TiledMode::BOTH) {
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w,   spriteRect.h);
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, spriteRect.h);
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w,   spriteRect.h*2);
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, spriteRect.h*2);
+    if (m_docPref.tiled.mode() == filters::TiledMode::BOTH) {
+      drawOneSpriteUnclippedRect(g, rc, spriteRect.w,   spriteRect.h);
+      drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, spriteRect.h);
+      drawOneSpriteUnclippedRect(g, rc, spriteRect.w,   spriteRect.h*2);
+      drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, spriteRect.h*2);
+
+      enclosingRect = gfx::Rect(
+          spriteRect.x, spriteRect.y,
+          spriteRect.w*3, spriteRect.h*3);
+    }
+  } else {
+
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 0, spriteRect.h * 0, 0);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 1, spriteRect.h * 0, 1);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 2, spriteRect.h * 0, 2);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 0, spriteRect.h * 1, 3);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 1, spriteRect.h * 1, 4);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 2, spriteRect.h * 1, 5);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 0, spriteRect.h * 2, 6);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 1, spriteRect.h * 2, 7);
+    drawOneSpriteUnclippedRect(g, rc, spriteRect.w * 2, spriteRect.h * 2, 8);
 
     enclosingRect = gfx::Rect(
       spriteRect.x, spriteRect.y,
       spriteRect.w*3, spriteRect.h*3);
-  }
 
-  if (m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w,   spriteRect.h);
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, spriteRect.h);
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w,   spriteRect.h*2);
-    drawOneSpriteUnclippedRect(g, rc, spriteRect.w*2, spriteRect.h*2);
+    if (_rc.x == 0 && _rc.y == 0) {
+      gfx::Rect lrc = m_sprite->bounds().createIntersection(rc);
+      lrc = m_proj.apply(lrc);
+      Point offset = m_padding + lrc.origin();
+      gfx::Color textColor = gfx::rgba(200, 200, 200);
+      gfx::Color selectColor = gfx::rgba(255, 255, 0);
+      gfx::Color textBackColor = gfx::rgba(0, 0, 0, 0);
 
-    enclosingRect = gfx::Rect(
-      spriteRect.x, spriteRect.y,
-      spriteRect.w*3, spriteRect.h*3);
+      // position data: isLineVertical, isTextRightAligned, textX, textY, lineX, lineY, lineLength
+      const int frameViewUiPositions[9][7] = {
+        { 0, 0, spriteRect.w * 0 + 4,  -11,                  spriteRect.w * 0 + offset.x + 2,  -4 + offset.y,                   spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 1 + 4,  -11,                  spriteRect.w * 1 + offset.x + 2,  -4 + offset.y,                   spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 2 + 4,  -11,                  spriteRect.w * 2 + offset.x + 2,  -4 + offset.y,                   spriteRect.w - 4 },
+        { 1, 1, -22,                   spriteRect.h + 3,     -4 + offset.x,                    spriteRect.h + 2 + offset.y,     spriteRect.h - 4 },
+        { 1, 0, spriteRect.w * 2 - 15, -20,                  spriteRect.w * 2 - 12 + offset.x, -13 + offset.y,                  8                },
+        { 1, 0, spriteRect.w * 3 + 5,  spriteRect.h + 4,     spriteRect.w * 3 + 3 + offset.x,  spriteRect.h + 2 + offset.y,     spriteRect.h - 4 },
+        { 0, 0, spriteRect.w * 0 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 0 + offset.x + 2,  spriteRect.h * 3 + 4 + offset.y, spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 1 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 1 + offset.x + 2,  spriteRect.h * 3 + 4 + offset.y, spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 2 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 2 + offset.x + 2,  spriteRect.h * 3 + 4 + offset.y, spriteRect.w - 4 } };
+      for (int i = 0; i < 9; i++) {
+        gfx::Color c = (m_frameViewIndex == i ? selectColor : textColor);
+        std::string indexText = std::to_string(m_frames[i] + 1);
+        if (frameViewUiPositions[i][1]) { indexText.insert(indexText.begin(), 4 - indexText.size(), ' '); }
+        g->drawText(indexText, c, textBackColor, Point(frameViewUiPositions[i][2], frameViewUiPositions[i][3]) + offset);
+        if (frameViewUiPositions[i][0]) {
+          g->drawVLine(c, frameViewUiPositions[i][4], frameViewUiPositions[i][5], frameViewUiPositions[i][6]);
+        }
+        else {
+          g->drawHLine(c, frameViewUiPositions[i][4], frameViewUiPositions[i][5], frameViewUiPositions[i][6]);
+        }
+      }
+    }
   }
 
   // Draw slices
@@ -938,7 +987,7 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
       // preview is shown (e.g. with this we avoid to showing the
       // edges in states like DrawingState, etc.).
       m_state->requireBrushPreview()) {
-    Cel* cel = (m_layer ? m_layer->cel(m_frame): nullptr);
+    Cel* cel = (m_layer ? m_layer->cel(frame()) : nullptr);
     if (cel) {
       gfx::Color color = color_utils::color_for_ui(Preferences::instance().guides.layerEdgesColor());
       drawCelBounds(g, cel, color);
@@ -1114,7 +1163,7 @@ void Editor::drawSlices(ui::Graphics* g)
   gfx::Point mainOffset(mainTilePosition());
 
   for (auto slice : m_sprite->slices()) {
-    auto key = slice->getByFrame(m_frame);
+    auto key = slice->getByFrame(frame());
     if (!key)
       continue;
 
@@ -1832,7 +1881,7 @@ bool Editor::selectSliceBox(const gfx::Rect& box)
 {
   m_selectedSlices.clear();
   for (auto slice : m_sprite->slices()) {
-    auto key = slice->getByFrame(m_frame);
+    auto key = slice->getByFrame(frame());
     if (key && key->bounds().intersects(box))
       m_selectedSlices.insert(slice->id());
   }
@@ -1947,6 +1996,10 @@ bool Editor::onProcessMessage(Message* msg)
         if (m_state != holdState)
           updateToolLoopModifiersIndicators(true);
 
+        if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+          setFrameViewByMousePosition(mouseMsg->position());
+        }
+
         return state;
       }
       break;
@@ -1958,6 +2011,10 @@ bool Editor::onProcessMessage(Message* msg)
 
         updateToolByTipProximity(mouseMsg->pointerType());
         updateAutoCelGuides(msg);
+
+        if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+          setFrameViewByMousePosition(mouseMsg->position());
+        }
 
         return m_state->onMouseMove(this, static_cast<MouseMessage*>(msg));
       }
@@ -2240,6 +2297,12 @@ void Editor::onContextBarBrushChange()
 void Editor::onTiledModeBeforeChange()
 {
   m_oldMainTilePos = mainTilePosition();
+
+  // If leaving "select Mode" (of Tiled Mode), just revert to use frameview 0
+  if (m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+    m_frames[0] = frame();
+    m_frameViewIndex = 0;
+  }
 }
 
 void Editor::onTiledModeChange()
@@ -2264,6 +2327,13 @@ void Editor::onTiledModeChange()
   screenPos = editorToScreen(spritePos);
 
   centerInSpritePoint(spritePos);
+
+  // If entering "select Mode" (of Tiled Mode), all frameviews start with same frame as frameview #0
+  if (m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+    for (int i = 1; i < 9; i++) {
+      m_frames[i] = m_frames[0];
+    }
+  }
 }
 
 void Editor::onShowExtrasChange()
@@ -2400,7 +2470,7 @@ EditorHit Editor::calcHit(const gfx::Point& mouseScreenPos)
         gfx::Point mainOffset(mainTilePosition());
 
         for (auto slice : m_sprite->slices()) {
-          auto key = slice->getByFrame(m_frame);
+          auto key = slice->getByFrame(frame());
           if (key) {
             gfx::Rect bounds = key->bounds();
             bounds.offset(mainOffset);
@@ -2923,7 +2993,7 @@ void Editor::updateAutoCelGuides(ui::Message* msg)
                      screenToEditorF(mouseMsg ? mouseMsg->position():
                                                 mousePosInDisplay()),
                      m_proj, ColorPicker::FromComposition);
-    m_showGuidesThisCel = (picker.layer() ? picker.layer()->cel(m_frame):
+    m_showGuidesThisCel = (picker.layer() ? picker.layer()->cel(frame()):
                                             nullptr);
   }
   else {
@@ -2933,6 +3003,21 @@ void Editor::updateAutoCelGuides(ui::Message* msg)
   if (m_showGuidesThisCel != oldShowGuidesThisCel ||
       m_showAutoCelGuides != oldShowAutoCelGuides) {
     invalidate();
+  }
+}
+
+void Editor::setFrameViewByMousePosition(Point position)
+{
+  auto p = screenToEditor(position);
+  auto s = m_sprite->size();
+  if (p.x < 0 || p.y < 0 || p.x >= s.w*3 || p.y >= s.h*3) {
+    return;
+  }
+  p.x /= s.w;
+  p.y /= s.h;
+  int newFrameView = p.x + p.y * 3;
+  if (m_frameViewIndex != newFrameView) {
+    m_frameViewIndex = newFrameView;
   }
 }
 

@@ -145,7 +145,7 @@ namespace app {
     Doc* document() { return m_document; }
     Sprite* sprite() { return m_sprite; }
     Layer* layer() { return m_layer; }
-    frame_t frame() { return m_frame; }
+    frame_t frame() const { return m_frames[m_frameViewIndex]; }
     DocumentPreferences& docPref() { return m_docPref; }
 
     void getSite(Site* site) const;
@@ -380,7 +380,7 @@ namespace app {
     // Draws the specified portion of sprite in the editor.  Warning:
     // You should setup the clip of the screen before calling this
     // routine.
-    void drawOneSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& rc, int dx, int dy);
+    void drawOneSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& rc, int dx, int dy, int frameViewIndex = 0);
 
     gfx::Point calcExtraPadding(const render::Projection& proj);
 
@@ -388,6 +388,8 @@ namespace app {
     void invalidateIfActive();
     bool showAutoCelGuides();
     void updateAutoCelGuides(ui::Message* msg);
+
+    void setFrameViewByMousePosition(gfx::Point position);
 
     // Stack of states. The top element in the stack is the current state (m_state).
     EditorStatesHistory m_statesHistory;
@@ -403,7 +405,8 @@ namespace app {
     Doc* m_document;              // Active document in the editor
     Sprite* m_sprite;             // Active sprite in the editor
     Layer* m_layer;               // Active layer in the editor
-    frame_t m_frame;              // Active frame in the editor
+    frame_t m_frames[9];          // Active frames in the editor (0th is traditional)
+    int m_frameViewIndex;         // Which m_frames entry is the current one
     render::Projection m_proj;    // Zoom/pixel ratio in the editor
     DocumentPreferences& m_docPref;
     // Helper functions affected by the current Tiled Mode.
