@@ -1,0 +1,7 @@
+- have current cell change as soon as tileview changes (may require ending draw and starting another)
+- when selecting the current cell, but on a different frameview, it does nothing.  Fix that.
+- don't allow drawing outside frameviews
+- add block around frameview uis that allows selecting frameviews by clicking on them
+- have cursor be arrow outside frameviews, but hand when over frameview ui blocks
+- have frameview uis change color when cursor is hovering over their blocks
+- have cursor preview show on hovered frameview even if not current frameview

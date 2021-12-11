@@ -411,8 +411,8 @@ void Editor::setFrame(frame_t newFrame)
   if (isActive())
     UIContext::instance()->notifyActiveSiteChanged();
 
-  // Invalidate canvas area
-  invalidateCanvas();
+  // Invalidate editor
+  invalidate();
   updateStatusBar();
 }
 
@@ -926,25 +926,25 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
 
       // position data: isLineVertical, isTextRightAligned, textX, textY, lineX, lineY, lineLength
       const int frameViewUiPositions[9][7] = {
-        { 0, 0, spriteRect.w * 0 + 4,  -11,                  spriteRect.w * 0 + offset.x + 2,  -4 + offset.y,                   spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 1 + 4,  -11,                  spriteRect.w * 1 + offset.x + 2,  -4 + offset.y,                   spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 2 + 4,  -11,                  spriteRect.w * 2 + offset.x + 2,  -4 + offset.y,                   spriteRect.w - 4 },
-        { 1, 1, -22,                   spriteRect.h + 3,     -4 + offset.x,                    spriteRect.h + 2 + offset.y,     spriteRect.h - 4 },
-        { 1, 0, spriteRect.w * 2 - 15, -20,                  spriteRect.w * 2 - 12 + offset.x, -13 + offset.y,                  8                },
-        { 1, 0, spriteRect.w * 3 + 5,  spriteRect.h + 4,     spriteRect.w * 3 + 3 + offset.x,  spriteRect.h + 2 + offset.y,     spriteRect.h - 4 },
-        { 0, 0, spriteRect.w * 0 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 0 + offset.x + 2,  spriteRect.h * 3 + 4 + offset.y, spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 1 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 1 + offset.x + 2,  spriteRect.h * 3 + 4 + offset.y, spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 2 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 2 + offset.x + 2,  spriteRect.h * 3 + 4 + offset.y, spriteRect.w - 4 } };
+        { 0, 0, spriteRect.w * 0 + 4,  -11,                  spriteRect.w * 0 + 2,     -4,                   spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 1 + 4,  -11,                  spriteRect.w * 1 + 2,     -4,                   spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 2 + 4,  -11,                  spriteRect.w * 2 + 2,     -4,                   spriteRect.w - 4 },
+        { 1, 1, -22,                   spriteRect.h + 3,     -4,                       spriteRect.h + 2,     spriteRect.h - 4 },
+        { 1, 0, spriteRect.w * 1.75f,  -20,                  spriteRect.w * 1.75f + 1, -13,                  8                },
+        { 1, 0, spriteRect.w * 3 + 5,  spriteRect.h + 4,     spriteRect.w * 3 + 3,     spriteRect.h + 2,     spriteRect.h - 4 },
+        { 0, 0, spriteRect.w * 0 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 0 + 2,     spriteRect.h * 3 + 4, spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 1 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 1 + 2,     spriteRect.h * 3 + 4, spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 2 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 2 + 2,     spriteRect.h * 3 + 4, spriteRect.w - 4 } };
       for (int i = 0; i < 9; i++) {
         gfx::Color c = (m_frameViewIndex == i ? selectColor : textColor);
         std::string indexText = std::to_string(m_frames[i] + 1);
         if (frameViewUiPositions[i][1]) { indexText.insert(indexText.begin(), 4 - indexText.size(), ' '); }
         g->drawText(indexText, c, textBackColor, Point(frameViewUiPositions[i][2], frameViewUiPositions[i][3]) + offset);
         if (frameViewUiPositions[i][0]) {
-          g->drawVLine(c, frameViewUiPositions[i][4], frameViewUiPositions[i][5], frameViewUiPositions[i][6]);
+          g->drawVLine(c, frameViewUiPositions[i][4] + offset.x, frameViewUiPositions[i][5] + offset.y, frameViewUiPositions[i][6]);
         }
         else {
-          g->drawHLine(c, frameViewUiPositions[i][4], frameViewUiPositions[i][5], frameViewUiPositions[i][6]);
+          g->drawHLine(c, frameViewUiPositions[i][4] + offset.x, frameViewUiPositions[i][5] + offset.y, frameViewUiPositions[i][6]);
         }
       }
     }
@@ -3018,6 +3018,7 @@ void Editor::setFrameViewByMousePosition(Point position)
   int newFrameView = p.x + p.y * 3;
   if (m_frameViewIndex != newFrameView) {
     m_frameViewIndex = newFrameView;
+    this->invalidate();
   }
 }
 
