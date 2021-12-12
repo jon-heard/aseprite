@@ -187,9 +187,10 @@ Editor::Editor(Doc* document, EditorFlags flags)
 
   // Restore last site in preferences
   {
-    frame_t preferredFrame = m_docPref.site.frame();
-    if (preferredFrame >= 0 && preferredFrame <= m_sprite->lastFrame())
-      setFrame(preferredFrame);
+    m_frames[0] = m_docPref.site.frame0(); m_frames[1] = m_docPref.site.frame1(); m_frames[2] = m_docPref.site.frame2();
+    m_frames[3] = m_docPref.site.frame3(); m_frames[4] = m_docPref.site.frame4(); m_frames[5] = m_docPref.site.frame5();
+    m_frames[6] = m_docPref.site.frame6(); m_frames[7] = m_docPref.site.frame7(); m_frames[8] = m_docPref.site.frame8();
+    m_frameViewIndex = m_docPref.site.frameViewIndex();
 
     LayerList layers = m_sprite->allBrowsableLayers();
     layer_t layerIndex = m_docPref.site.layer();
@@ -219,7 +220,10 @@ Editor::~Editor()
     LayerList layers = m_sprite->allBrowsableLayers();
     layer_t layerIndex = doc::find_layer_index(layers, layer());
 
-    m_docPref.site.frame(frame());
+    m_docPref.site.frame0(m_frames[0]); m_docPref.site.frame1(m_frames[1]); m_docPref.site.frame2(m_frames[2]);
+    m_docPref.site.frame3(m_frames[3]); m_docPref.site.frame4(m_frames[4]); m_docPref.site.frame5(m_frames[5]);
+    m_docPref.site.frame6(m_frames[6]); m_docPref.site.frame7(m_frames[7]); m_docPref.site.frame8(m_frames[8]);
+    m_docPref.site.frameViewIndex(m_frameViewIndex);
     m_docPref.site.layer(layerIndex);
   }
 
@@ -411,7 +415,7 @@ void Editor::setFrame(frame_t newFrame)
   if (isActive())
     UIContext::instance()->notifyActiveSiteChanged();
 
-  // Invalidate editor
+  // Invalidate editor (including the canvas)
   invalidate();
   updateStatusBar();
 }
@@ -926,15 +930,15 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
 
       // position data: isLineVertical, isTextRightAligned, textX, textY, lineX, lineY, lineLength
       const int frameViewUiPositions[9][7] = {
-        { 0, 0, spriteRect.w * 0 + 4,  -11,                  spriteRect.w * 0 + 2,     -4,                   spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 1 + 4,  -11,                  spriteRect.w * 1 + 2,     -4,                   spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 2 + 4,  -11,                  spriteRect.w * 2 + 2,     -4,                   spriteRect.w - 4 },
-        { 1, 1, -22,                   spriteRect.h + 3,     -4,                       spriteRect.h + 2,     spriteRect.h - 4 },
-        { 1, 0, spriteRect.w * 1.75f,  -20,                  spriteRect.w * 1.75f + 1, -13,                  8                },
-        { 1, 0, spriteRect.w * 3 + 5,  spriteRect.h + 4,     spriteRect.w * 3 + 3,     spriteRect.h + 2,     spriteRect.h - 4 },
-        { 0, 0, spriteRect.w * 0 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 0 + 2,     spriteRect.h * 3 + 4, spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 1 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 1 + 2,     spriteRect.h * 3 + 4, spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 2 + 4,  spriteRect.h * 3 + 6, spriteRect.w * 2 + 2,     spriteRect.h * 3 + 4, spriteRect.w - 4 } };
+        { 0, 0, spriteRect.w * 0 + 4,        -11,                  spriteRect.w * 0 + 2,             -4,                   spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 1 + 4,        -11,                  spriteRect.w * 1 + 2,             -4,                   spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 2 + 4,        -11,                  spriteRect.w * 2 + 2,             -4,                   spriteRect.w - 4 },
+        { 1, 1, -22,                         spriteRect.h + 3,     -4,                              spriteRect.h + 2,     spriteRect.h - 4 },
+        { 1, 0, (int)(spriteRect.w * 1.75f), -20,                  (int)(spriteRect.w * 1.75f) + 1, -13,                  8                },
+        { 1, 0, spriteRect.w * 3 + 5,        spriteRect.h + 4,     spriteRect.w * 3 + 3,             spriteRect.h + 2,     spriteRect.h - 4 },
+        { 0, 0, spriteRect.w * 0 + 4,        spriteRect.h * 3 + 6, spriteRect.w * 0 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 1 + 4,        spriteRect.h * 3 + 6, spriteRect.w * 1 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 2 + 4,        spriteRect.h * 3 + 6, spriteRect.w * 2 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 } };
       for (int i = 0; i < 9; i++) {
         gfx::Color c = (m_frameViewIndex == i ? selectColor : textColor);
         std::string indexText = std::to_string(m_frames[i] + 1);
@@ -1961,6 +1965,11 @@ bool Editor::onProcessMessage(Message* msg)
       if (m_sprite) {
         MouseMessage* mouseMsg = static_cast<MouseMessage*>(msg);
 
+        // Do this first so frameview can be set before tool is triggered
+        if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+          setFrameViewByMousePosition(mouseMsg->position());
+        }
+
         // If we're going to start drawing, we cancel the flashing
         // layer.
         if (m_flashing != Flashing::None) {
@@ -1995,10 +2004,6 @@ bool Editor::onProcessMessage(Message* msg)
         // drawing lines with the angle snapped.
         if (m_state != holdState)
           updateToolLoopModifiersIndicators(true);
-
-        if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
-          setFrameViewByMousePosition(mouseMsg->position());
-        }
 
         return state;
       }
@@ -3017,7 +3022,15 @@ void Editor::setFrameViewByMousePosition(Point position)
   p.y /= s.h;
   int newFrameView = p.x + p.y * 3;
   if (m_frameViewIndex != newFrameView) {
+    bool isToolBeingUsed = hasCapture();
+    if (isToolBeingUsed) {
+//      App::instance()->activeToolManager()->releaseButtons();
+    }
     m_frameViewIndex = newFrameView;
+    if (isToolBeingUsed) {
+      //App::instance()->activeToolManager()->pressButton(
+      //  pointer_from_msg(this, mouseMsg));
+    }
     this->invalidate();
   }
 }
