@@ -13,6 +13,8 @@
 
 #include "app/context.h"
 #include "app/site.h"
+#include "ui_context.h"
+#include "ui/editor/editor.h"
 
 #ifdef ENABLE_UI
 #include "app/app.h"
@@ -38,6 +40,7 @@ CmdTransaction* CmdTransaction::moveToEmptyCopy()
                                             m_savedCounter);
   copy->m_spritePositionBefore = m_spritePositionBefore;
   copy->m_spritePositionAfter = m_spritePositionAfter;
+  copy->m_frameViewIndex = m_frameViewIndex;
   if (m_ranges) {
     copy->m_ranges.reset(new Ranges);
     copy->m_ranges->m_before = std::move(m_ranges->m_before);
@@ -90,6 +93,7 @@ void CmdTransaction::onExecute()
 {
   // Save the current site and doc range
   m_spritePositionBefore = calcSpritePosition();
+  m_frameViewIndex = UIContext::instance()->activeEditor()->frameViewIndex();
 #ifdef ENABLE_UI
   if (isDocRangeEnabled()) {
     m_ranges.reset(new Ranges);

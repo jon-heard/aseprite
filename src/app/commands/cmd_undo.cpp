@@ -75,6 +75,14 @@ void UndoCommand::onExecute(Context* context)
     (Preferences::instance().undo.gotoModified() &&
      context->isUIAvailable() && current_editor);
   if (gotoModified) {
+    // Make sure we're changing the right frameview for this undo/redo
+    if (m_type == Undo)
+      UIContext::instance()->activeEditor()->setFrameViewIndex(
+        undo->nextUndoFrameViewIndex());
+    else
+      UIContext::instance()->activeEditor()->setFrameViewIndex(
+        undo->nextRedoFrameViewIndex());
+
     SpritePosition currentPosition(writer.site()->layer(),
                                    writer.site()->frame());
 

@@ -1,4 +1,3 @@
-- have current cell change as soon as tileview changes (may require ending draw and starting another)
 - when selecting the current cell, but on a different frameview, it does nothing.  Fix that.
 - don't allow drawing outside frameviews
 - add block around frameview uis that allows selecting frameviews by clicking on them

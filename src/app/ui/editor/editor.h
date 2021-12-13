@@ -146,6 +146,7 @@ namespace app {
     Sprite* sprite() { return m_sprite; }
     Layer* layer() { return m_layer; }
     frame_t frame() const { return m_frames[m_frameViewIndex]; }
+    int frameViewIndex() const { return m_frameViewIndex; }
     DocumentPreferences& docPref() { return m_docPref; }
 
     void getSite(Site* site) const;
@@ -153,6 +154,7 @@ namespace app {
 
     void setLayer(const Layer* layer);
     void setFrame(frame_t frame);
+    void setFrameViewIndex(int frameViewIndex) { m_frameViewIndex = frameViewIndex; }
 
     const render::Projection& projection() const { return m_proj; }
     const render::Zoom& zoom() const { return m_proj.zoom(); }
@@ -389,7 +391,7 @@ namespace app {
     bool showAutoCelGuides();
     void updateAutoCelGuides(ui::Message* msg);
 
-    void setFrameViewByMousePosition(gfx::Point position);
+    void setFrameViewByMousePosition(gfx::Point position, void* mouseMsg = 0);
 
     // Stack of states. The top element in the stack is the current state (m_state).
     EditorStatesHistory m_statesHistory;

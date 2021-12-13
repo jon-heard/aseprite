@@ -52,6 +52,8 @@ namespace ui {
     bool onlyCmdPressed() const { return m_modifiers == kKeyCmdModifier; }
     bool onlyWinPressed() const { return m_modifiers == kKeyWinModifier; }
 
+    void setType(MessageType type) { m_type = type; }
+
     void setDisplay(Display* display);
     void setRecipient(Widget* widget);
     void removeRecipient(Widget* widget);

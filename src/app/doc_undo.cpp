@@ -205,6 +205,25 @@ std::istream* DocUndo::nextRedoDocRange() const
     return nullptr;
 }
 
+int DocUndo::nextUndoFrameViewIndex() const
+{
+  const undo::UndoState* state = nextUndo();
+  if (state)
+    return STATE_CMD(state)->frameViewIndex();
+  else
+    return 0;
+}
+
+int DocUndo::nextRedoFrameViewIndex() const
+{
+  const undo::UndoState* state = nextRedo();
+  if (state)
+    return STATE_CMD(state)->frameViewIndex();
+  else
+    return 0;
+}
+
+
 Cmd* DocUndo::lastExecutedCmd() const
 {
   const undo::UndoState* state = m_undoHistory.currentState();

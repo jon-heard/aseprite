@@ -36,6 +36,8 @@ namespace app {
     SpritePosition spritePositionBeforeExecute() const { return m_spritePositionBefore; }
     SpritePosition spritePositionAfterExecute() const { return m_spritePositionAfter; }
 
+    int frameViewIndex() const { return m_frameViewIndex; }
+
     std::istream* documentRangeBeforeExecute() const;
     std::istream* documentRangeAfterExecute() const;
 
@@ -58,6 +60,7 @@ namespace app {
 
     SpritePosition m_spritePositionBefore;
     SpritePosition m_spritePositionAfter;
+    int m_frameViewIndex;
     std::unique_ptr<Ranges> m_ranges;
     std::string m_label;
     bool m_changeSavedState;

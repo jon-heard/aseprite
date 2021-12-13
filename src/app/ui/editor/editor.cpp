@@ -2017,11 +2017,13 @@ bool Editor::onProcessMessage(Message* msg)
         updateToolByTipProximity(mouseMsg->pointerType());
         updateAutoCelGuides(msg);
 
+        bool result = m_state->onMouseMove(this, static_cast<MouseMessage*>(msg));
+
         if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
-          setFrameViewByMousePosition(mouseMsg->position());
+          setFrameViewByMousePosition(mouseMsg->position(), mouseMsg);
         }
 
-        return m_state->onMouseMove(this, static_cast<MouseMessage*>(msg));
+        return result;
       }
       break;
 
@@ -3011,10 +3013,10 @@ void Editor::updateAutoCelGuides(ui::Message* msg)
   }
 }
 
-void Editor::setFrameViewByMousePosition(Point position)
+void Editor::setFrameViewByMousePosition(Point position, void* mouseMsg)
 {
-  auto p = screenToEditor(position);
-  auto s = m_sprite->size();
+  Point p = screenToEditor(position);
+  Size s = m_sprite->size();
   if (p.x < 0 || p.y < 0 || p.x >= s.w*3 || p.y >= s.h*3) {
     return;
   }
@@ -3022,14 +3024,14 @@ void Editor::setFrameViewByMousePosition(Point position)
   p.y /= s.h;
   int newFrameView = p.x + p.y * 3;
   if (m_frameViewIndex != newFrameView) {
-    bool isToolBeingUsed = hasCapture();
-    if (isToolBeingUsed) {
-//      App::instance()->activeToolManager()->releaseButtons();
+    if (mouseMsg) {
+      ((MouseMessage*)mouseMsg)->setType(kMouseUpMessage);
+      onProcessMessage((MouseMessage*)mouseMsg);
     }
     m_frameViewIndex = newFrameView;
-    if (isToolBeingUsed) {
-      //App::instance()->activeToolManager()->pressButton(
-      //  pointer_from_msg(this, mouseMsg));
+    if (mouseMsg) {
+      ((MouseMessage*)mouseMsg)->setType(kMouseDownMessage);
+      onProcessMessage((MouseMessage*)mouseMsg);
     }
     this->invalidate();
   }

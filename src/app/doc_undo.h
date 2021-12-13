@@ -54,6 +54,8 @@ namespace app {
     SpritePosition nextRedoSpritePosition() const;
     std::istream* nextUndoDocRange() const;
     std::istream* nextRedoDocRange() const;
+    int nextUndoFrameViewIndex() const;
+    int nextRedoFrameViewIndex() const;
 
     Cmd* lastExecutedCmd() const;
 
