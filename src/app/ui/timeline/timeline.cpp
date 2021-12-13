@@ -937,8 +937,8 @@ bool Timeline::onProcessMessage(Message* msg)
             }
 
             // Select the new clicked-part.
-            if (old_layer != m_clk.layer
-                || old_frame != m_clk.frame) {
+            if (old_layer != m_clk.layer ||
+                UIContext::instance()->activeEditor()->frame() != m_clk.frame) {
               setLayer(m_rows[m_clk.layer].layer());
               setFrame(m_clk.frame, true);
               invalidate();
