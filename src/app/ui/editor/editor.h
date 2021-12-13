@@ -391,7 +391,7 @@ namespace app {
     bool showAutoCelGuides();
     void updateAutoCelGuides(ui::Message* msg);
 
-    void setFrameViewByMousePosition(gfx::Point position, void* mouseMsg = 0);
+    int screenToFrameViewIndex(gfx::Point position);
 
     // Stack of states. The top element in the stack is the current state (m_state).
     EditorStatesHistory m_statesHistory;

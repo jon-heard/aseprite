@@ -1965,9 +1965,15 @@ bool Editor::onProcessMessage(Message* msg)
       if (m_sprite) {
         MouseMessage* mouseMsg = static_cast<MouseMessage*>(msg);
 
-        // Do this first so frameview can be set before tool is triggered
         if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
-          setFrameViewByMousePosition(mouseMsg->position());
+          int pointedFrameViewIndex = screenToFrameViewIndex(mouseMsg->position());
+          if (pointedFrameViewIndex == -1) {
+            return true;
+          }
+          if (m_frameViewIndex != pointedFrameViewIndex) {
+            m_frameViewIndex = pointedFrameViewIndex;
+            this->invalidate();
+          }
         }
 
         // If we're going to start drawing, we cancel the flashing
@@ -2011,16 +2017,48 @@ bool Editor::onProcessMessage(Message* msg)
 
     case kMouseMoveMessage:
       if (m_sprite) {
-        EditorStatePtr holdState(m_state);
         MouseMessage* mouseMsg = static_cast<MouseMessage*>(msg);
+
+        int pointedFrameViewIndex;
+        bool outsideBounds;
+        if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+          pointedFrameViewIndex = screenToFrameViewIndex(mouseMsg->position());
+          if (pointedFrameViewIndex == -1) {
+            // If drawing, end drawing by simulating mouse up
+            if (hasCapture()) {
+              ((MouseMessage*)mouseMsg)->setType(kMouseUpMessage);
+              onProcessMessage((MouseMessage*)mouseMsg);
+            }
+            return true;
+          } else {
+            // If not drawing, but moving mouse within frameview, trigger drawing
+            if (!hasCapture()) {
+              ((MouseMessage*)mouseMsg)->setType(kMouseDownMessage);
+              onProcessMessage((MouseMessage*)mouseMsg);
+            }
+          }
+        }
+
+        EditorStatePtr holdState(m_state);
 
         updateToolByTipProximity(mouseMsg->pointerType());
         updateAutoCelGuides(msg);
 
         bool result = m_state->onMouseMove(this, static_cast<MouseMessage*>(msg));
 
-        if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
-          setFrameViewByMousePosition(mouseMsg->position(), mouseMsg);
+        if (mouseMsg->left() &&
+            m_docPref.tiled.mode() == filters::TiledMode::SELECT && pointedFrameViewIndex >= 0) {
+          if (m_frameViewIndex != pointedFrameViewIndex) {
+            // Stop old drawing
+            ((MouseMessage*)mouseMsg)->setType(kMouseUpMessage);
+            onProcessMessage((MouseMessage*)mouseMsg);
+            // Transfer to a different frame
+            m_frameViewIndex = pointedFrameViewIndex;
+            // Start new drawing
+            ((MouseMessage*)mouseMsg)->setType(kMouseDownMessage);
+            onProcessMessage((MouseMessage*)mouseMsg);
+            this->invalidate();
+          }
         }
 
         return result;
@@ -3013,28 +3051,15 @@ void Editor::updateAutoCelGuides(ui::Message* msg)
   }
 }
 
-void Editor::setFrameViewByMousePosition(Point position, void* mouseMsg)
+int Editor::screenToFrameViewIndex(Point position)
 {
-  Point p = screenToEditor(position);
-  Size s = m_sprite->size();
-  if (p.x < 0 || p.y < 0 || p.x >= s.w*3 || p.y >= s.h*3) {
-    return;
-  }
-  p.x /= s.w;
-  p.y /= s.h;
-  int newFrameView = p.x + p.y * 3;
-  if (m_frameViewIndex != newFrameView) {
-    if (mouseMsg) {
-      ((MouseMessage*)mouseMsg)->setType(kMouseUpMessage);
-      onProcessMessage((MouseMessage*)mouseMsg);
-    }
-    m_frameViewIndex = newFrameView;
-    if (mouseMsg) {
-      ((MouseMessage*)mouseMsg)->setType(kMouseDownMessage);
-      onProcessMessage((MouseMessage*)mouseMsg);
-    }
-    this->invalidate();
-  }
+  Size frameSize = m_sprite->size();
+  position = screenToEditor(position);
+  position.x = floor((float)position.x / frameSize.w);
+  position.y = floor((float)position.y / frameSize.h);
+  return (position.x < 0 || position.y < 0 || position.x >= 3 || position.y >= 3) ?
+           -1 :
+           (position.x + position.y * 3);
 }
 
 // static
