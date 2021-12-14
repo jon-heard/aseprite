@@ -52,7 +52,7 @@ namespace ui {
     bool onlyCmdPressed() const { return m_modifiers == kKeyCmdModifier; }
     bool onlyWinPressed() const { return m_modifiers == kKeyWinModifier; }
 
-    void setType(MessageType type) { m_type = type; }
+    void setType(const MessageType& type) { m_type = type; }
 
     void setDisplay(Display* display);
     void setRecipient(Widget* widget);
@@ -149,6 +149,7 @@ namespace ui {
     float pressure() const { return m_pressure; }
 
     const gfx::Point& position() const { return m_pos; }
+    void setPosition(const gfx::Point& position) { m_pos = position; }
 
     // Returns the mouse message position relative to the given
     // "anotherDisplay" (the m_pos field is relative to m_display).

@@ -1,9 +1,13 @@
-- have cursor be arrow outside frameviews, but hand when over frameview ui blocks
-- add block around frameview uis that allows selecting frameviews by clicking on them
-	- have frameview uis change color when cursor is hovering over their blocks
-
+- get fill working right
 - post demo of it to forum and request votes
 
+- drawing into frameview real quick skips some draw at start
 - have cursor preview show on hovered frameview even if not current frameview
-- get preview working right
+- get preview view working right
 - get animation working right
+
+- two data structures need to be setup once per change of frame size
+	- frameViewUiPositions
+	- m_frameViewUiPositions
+- polish code
+- add pull request

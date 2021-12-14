@@ -145,8 +145,8 @@ Editor::Editor(Doc* document, EditorFlags flags)
   , m_document(document)
   , m_sprite(m_document->sprite())
   , m_layer(m_sprite->root()->firstLayer())
-  , m_frames { -1, -1, -1, -1, -1, -1, -1, -1, -1 } // Initialize to invalid to recognize when initial setting happens
   , m_frameViewIndex(0)
+  , m_frameViews_isAllSelected(true)
   , m_docPref(Preferences::instance().document(document))
   , m_tiledModeHelper(app::TiledModeHelper(m_docPref.tiled.mode(), m_sprite))
   , m_brushPreview(this)
@@ -401,7 +401,7 @@ void Editor::setFrame(frame_t newFrame)
   {
     HideBrushPreview hide(m_brushPreview);
     // If "setFrame" for first time, set frame for ALL stored frames
-    if (m_frames[m_frameViewIndex] == -1) {
+    if (m_frameViews_isAllSelected) {
       for (int i = 0; i < 9; i++) {
         m_frames[i] = newFrame;
       }
@@ -925,23 +925,26 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
       lrc = m_proj.apply(lrc);
       Point offset = m_padding + lrc.origin();
       gfx::Color textColor = gfx::rgba(200, 200, 200);
-      gfx::Color selectColor = gfx::rgba(255, 255, 0);
+      gfx::Color selectColor = gfx::rgba(0, 128, 255);
+      gfx::Color hoverColor = gfx::rgba(255, 255, 0);
       gfx::Color textBackColor = gfx::rgba(0, 0, 0, 0);
 
       // position data: isLineVertical, isTextRightAligned, textX, textY, lineX, lineY, lineLength
-      const int frameViewUiPositions[9][7] = {
-        { 0, 0, spriteRect.w * 0 + 4,        -11,                  spriteRect.w * 0 + 2,             -4,                   spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 1 + 4,        -11,                  spriteRect.w * 1 + 2,             -4,                   spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 2 + 4,        -11,                  spriteRect.w * 2 + 2,             -4,                   spriteRect.w - 4 },
-        { 1, 1, -22,                         spriteRect.h + 3,     -4,                              spriteRect.h + 2,     spriteRect.h - 4 },
-        { 1, 0, (int)(spriteRect.w * 1.75f), -20,                  (int)(spriteRect.w * 1.75f) + 1, -13,                  8                },
-        { 1, 0, spriteRect.w * 3 + 5,        spriteRect.h + 4,     spriteRect.w * 3 + 3,             spriteRect.h + 2,     spriteRect.h - 4 },
-        { 0, 0, spriteRect.w * 0 + 4,        spriteRect.h * 3 + 6, spriteRect.w * 0 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 1 + 4,        spriteRect.h * 3 + 6, spriteRect.w * 1 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 },
-        { 0, 0, spriteRect.w * 2 + 4,        spriteRect.h * 3 + 6, spriteRect.w * 2 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 } };
-      for (int i = 0; i < 9; i++) {
-        gfx::Color c = (m_frameViewIndex == i ? selectColor : textColor);
-        std::string indexText = std::to_string(m_frames[i] + 1);
+      const int frameViewUiPositions[10][7] = {
+        { 0, 0, spriteRect.w * 0 + 4,          -11,                  spriteRect.w * 0 + 2,             -4,                   spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 1 + 4,          -11,                  spriteRect.w * 1 + 2,             -4,                   spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 2 + 4,          -11,                  spriteRect.w * 2 + 2,             -4,                   spriteRect.w - 4 },
+        { 1, 1, -22,                           spriteRect.h + 3,     -4,                              spriteRect.h + 2,      spriteRect.h - 4 },
+        { 1, 0, (int)(spriteRect.w * 1.75f),   -20,                  (int)(spriteRect.w * 1.75f) + 1, -13,                   8                },
+        { 1, 0, spriteRect.w * 3 + 5,          spriteRect.h + 4,     spriteRect.w * 3 + 3,             spriteRect.h + 2,     spriteRect.h - 4 },
+        { 0, 0, spriteRect.w * 0 + 4,          spriteRect.h * 3 + 6, spriteRect.w * 0 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 1 + 4,          spriteRect.h * 3 + 6, spriteRect.w * 1 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 },
+        { 0, 0, spriteRect.w * 2 + 4,          spriteRect.h * 3 + 6, spriteRect.w * 2 + 2,             spriteRect.h * 3 + 4, spriteRect.w - 4 },
+        { 1, 0, (int)(spriteRect.w * 2.75f)-5, -20,                  (int)(spriteRect.w * 2.75f) + 1, -13,                   8                }};
+      int selected = m_frameViews_isAllSelected ? 9 : m_frameViewIndex;
+      for (int i = 0; i < 10; i++) {
+        gfx::Color c = (selected == i ? selectColor : m_hoveredFrameViewUiIndex == i ? hoverColor : textColor);
+        std::string indexText = i < 9 ? std::to_string(m_frames[i] + 1) : "ALL";
         if (frameViewUiPositions[i][1]) { indexText.insert(indexText.begin(), 4 - indexText.size(), ' '); }
         g->drawText(indexText, c, textBackColor, Point(frameViewUiPositions[i][2], frameViewUiPositions[i][3]) + offset);
         if (frameViewUiPositions[i][0]) {
@@ -1965,15 +1968,27 @@ bool Editor::onProcessMessage(Message* msg)
       if (m_sprite) {
         MouseMessage* mouseMsg = static_cast<MouseMessage*>(msg);
 
+        if (m_hoveredFrameViewIndex < 0) {
+          if (m_hoveredFrameViewUiIndex >= 0) {
+            if (m_hoveredFrameViewUiIndex < 9) {
+              m_frameViewIndex = m_hoveredFrameViewUiIndex;
+              m_frameViews_isAllSelected = false;
+             } else {
+              m_frameViewIndex = 0;
+              m_frameViews_isAllSelected = true;
+            }
+            invalidate();
+          }
+          return true;
+        }
+
         if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
-          int pointedFrameViewIndex = screenToFrameViewIndex(mouseMsg->position());
-          if (pointedFrameViewIndex == -1) {
-            return true;
+          if (m_frameViewIndex != m_hoveredFrameViewIndex || m_frameViews_isAllSelected) {
+            m_frameViewIndex = m_hoveredFrameViewIndex;
+            m_frameViews_isAllSelected = false;
+            invalidate();
           }
-          if (m_frameViewIndex != pointedFrameViewIndex) {
-            m_frameViewIndex = pointedFrameViewIndex;
-            this->invalidate();
-          }
+          m_priorPointerPosition = mouseMsg->position();
         }
 
         // If we're going to start drawing, we cancel the flashing
@@ -2019,24 +2034,89 @@ bool Editor::onProcessMessage(Message* msg)
       if (m_sprite) {
         MouseMessage* mouseMsg = static_cast<MouseMessage*>(msg);
 
-        int pointedFrameViewIndex;
-        bool outsideBounds;
-        if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
-          pointedFrameViewIndex = screenToFrameViewIndex(mouseMsg->position());
-          if (pointedFrameViewIndex == -1) {
-            // If drawing, end drawing by simulating mouse up
-            if (hasCapture()) {
-              ((MouseMessage*)mouseMsg)->setType(kMouseUpMessage);
-              onProcessMessage((MouseMessage*)mouseMsg);
-            }
-            return true;
-          } else {
-            // If not drawing, but moving mouse within frameview, trigger drawing
-            if (!hasCapture()) {
-              ((MouseMessage*)mouseMsg)->setType(kMouseDownMessage);
-              onProcessMessage((MouseMessage*)mouseMsg);
-            }
+        // work out what frameview we're hovering over.
+        // If not in "Select Tile" mode, ALWAYS hovering over frameview 0.
+        if (m_docPref.tiled.mode() != filters::TiledMode::SELECT)
+          m_hoveredFrameViewIndex = 0;
+        else {
+          Size frameSize = m_sprite->size();
+          Point p = screenToEditor(mouseMsg->position());
+          p.x = floor((float)p.x / frameSize.w);
+          p.y = floor((float)p.y / frameSize.h);
+          if (p.x < 0 || p.y < 0 || p.x >= 3 || p.y >= 3)
+            m_hoveredFrameViewIndex = -1;
+          else
+            m_hoveredFrameViewIndex = (p.x + p.y * 3);
+        }
+
+        // If not hovering over a frameview (and in "Select Tile" mode),
+        // check if hovering over a frameview's ui.
+        if (m_hoveredFrameViewIndex < 0) {
+          // Initialize frameview ui positions
+          if (m_frameViewUiPositions[0].x == 0) {
+            Size frameSize = m_sprite->size();
+            m_frameViewUiPositions[0] = Rect(0, -17, frameSize.w, 17);
+            m_frameViewUiPositions[1] = Rect(frameSize.w, -17, frameSize.w, 17);
+            m_frameViewUiPositions[2] = Rect(frameSize.w * 2, -17, frameSize.w, 17);
+            m_frameViewUiPositions[3] = Rect(-17, frameSize.h, 17, frameSize.h);
+            m_frameViewUiPositions[4] = Rect(frameSize.w * 2 - 15, -25, 15, 25);
+            m_frameViewUiPositions[5] = Rect(frameSize.w * 3, frameSize.h, 17, frameSize.h);
+            m_frameViewUiPositions[6] = Rect(0, frameSize.h * 3, frameSize.w, 17);
+            m_frameViewUiPositions[7] = Rect(frameSize.w, frameSize.h * 3, frameSize.w, 17);
+            m_frameViewUiPositions[8] = Rect(frameSize.w * 2, frameSize.h * 3, frameSize.w, 17);
+            m_frameViewUiPositions[9] = Rect(frameSize.w * 3 - 15, -25, 15, 25);
           }
+          Point p = screenToEditor(mouseMsg->position());
+          int hoveredFrameViewUiIndex = -1;
+          // We don't early out this loop as positions can overlap (we want to latest in the list)
+          for (int i = 0; i < 10; i++)
+            if (m_frameViewUiPositions[i].contains(p))
+              hoveredFrameViewUiIndex = i;
+          if (hoveredFrameViewUiIndex != m_hoveredFrameViewUiIndex) {
+            m_hoveredFrameViewUiIndex = hoveredFrameViewUiIndex;
+            invalidate();
+          }
+        }
+        else {
+          if (m_hoveredFrameViewUiIndex >= 0) {
+            m_hoveredFrameViewUiIndex = -1;
+            invalidate();
+          }
+        }
+
+        if (m_hoveredFrameViewIndex < 0) {
+          // If drawing, end drawing by simulating mouse up
+          if (hasCapture()) {
+            mouseMsg->setType(kMouseUpMessage);
+            onProcessMessage(mouseMsg);
+          }
+          return true;
+        } else {
+          // If not drawing, but moving mouse within frameview, trigger drawing
+          if (mouseMsg->left() && !hasCapture()) {
+            mouseMsg->setType(kMouseDownMessage);
+            onProcessMessage(mouseMsg);
+            mouseMsg->setType(kMouseMoveMessage);
+          }
+        }
+
+        if (mouseMsg->left() && m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+          if (m_frameViewIndex != m_hoveredFrameViewIndex) {
+            // Stop old drawing
+            Point currentPosition = mouseMsg->position();
+            mouseMsg->setPosition(m_priorPointerPosition);
+            mouseMsg->setType(kMouseUpMessage);
+            onProcessMessage(mouseMsg);
+            mouseMsg->setPosition(currentPosition);
+            // Transfer to a different frame
+            m_frameViewIndex = m_hoveredFrameViewIndex;
+            // Start new drawing
+            mouseMsg->setType(kMouseDownMessage);
+            onProcessMessage(mouseMsg);
+            mouseMsg->setType(kMouseMoveMessage);
+            this->invalidate();
+          }
+          m_priorPointerPosition = mouseMsg->position();
         }
 
         EditorStatePtr holdState(m_state);
@@ -2044,24 +2124,7 @@ bool Editor::onProcessMessage(Message* msg)
         updateToolByTipProximity(mouseMsg->pointerType());
         updateAutoCelGuides(msg);
 
-        bool result = m_state->onMouseMove(this, static_cast<MouseMessage*>(msg));
-
-        if (mouseMsg->left() &&
-            m_docPref.tiled.mode() == filters::TiledMode::SELECT && pointedFrameViewIndex >= 0) {
-          if (m_frameViewIndex != pointedFrameViewIndex) {
-            // Stop old drawing
-            ((MouseMessage*)mouseMsg)->setType(kMouseUpMessage);
-            onProcessMessage((MouseMessage*)mouseMsg);
-            // Transfer to a different frame
-            m_frameViewIndex = pointedFrameViewIndex;
-            // Start new drawing
-            ((MouseMessage*)mouseMsg)->setType(kMouseDownMessage);
-            onProcessMessage((MouseMessage*)mouseMsg);
-            this->invalidate();
-          }
-        }
-
-        return result;
+        return m_state->onMouseMove(this, static_cast<MouseMessage*>(msg));
       }
       break;
 
@@ -2373,11 +2436,14 @@ void Editor::onTiledModeChange()
 
   centerInSpritePoint(spritePos);
 
-  // If entering "select Mode" (of Tiled Mode), all frameviews start with same frame as frameview #0
+  // If entering "select Mode" (of Tiled Mode)...
   if (m_docPref.tiled.mode() == filters::TiledMode::SELECT) {
+    // all frameviews start with same frame as frameview #0
     for (int i = 1; i < 9; i++) {
       m_frames[i] = m_frames[0];
     }
+    // We start with "ALL" frameviews selected
+    m_frameViews_isAllSelected = true;
   }
 }
 
@@ -2450,11 +2516,11 @@ void Editor::setCursor(const gfx::Point& mouseDisplayPos)
     return;
 
   bool used = false;
-  if (m_sprite)
+  if (m_sprite && m_hoveredFrameViewIndex >= 0)
     used = m_state->onSetCursor(this, mouseDisplayPos);
 
   if (!used)
-    showMouseCursor(kArrowCursor);
+    showMouseCursor(m_hoveredFrameViewUiIndex < 0 ? kArrowCursor : kHandCursor);
 }
 
 bool Editor::canDraw()
@@ -3049,17 +3115,6 @@ void Editor::updateAutoCelGuides(ui::Message* msg)
       m_showAutoCelGuides != oldShowAutoCelGuides) {
     invalidate();
   }
-}
-
-int Editor::screenToFrameViewIndex(Point position)
-{
-  Size frameSize = m_sprite->size();
-  position = screenToEditor(position);
-  position.x = floor((float)position.x / frameSize.w);
-  position.y = floor((float)position.y / frameSize.h);
-  return (position.x < 0 || position.y < 0 || position.x >= 3 || position.y >= 3) ?
-           -1 :
-           (position.x + position.y * 3);
 }
 
 // static

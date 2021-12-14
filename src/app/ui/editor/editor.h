@@ -391,8 +391,6 @@ namespace app {
     bool showAutoCelGuides();
     void updateAutoCelGuides(ui::Message* msg);
 
-    int screenToFrameViewIndex(gfx::Point position);
-
     // Stack of states. The top element in the stack is the current state (m_state).
     EditorStatesHistory m_statesHistory;
     EditorStatesHistory m_deletedStates;
@@ -471,6 +469,20 @@ namespace app {
     // Used to restore scroll when the tiled mode is changed.
     // TODO could we avoid one extra field just to do this?
     gfx::Point m_oldMainTilePos;
+
+    // What frameview the pointer is hovering over.
+    // If not in "Select Tile" mode, ALWAYS hovering over frameview 0.
+    int m_hoveredFrameViewIndex;
+    // Index of frameview who's ui pointer is hovering over.
+    // -1 if not hovering over a frameview ui.
+    int m_hoveredFrameViewUiIndex;
+    // Positions of frameview uis for recognizing if pointer hovers over them
+    gfx::Rect m_frameViewUiPositions[10];
+    // Drawing between frameviews needs revision of pointer movement as it
+    // causes a line from one frameview to another
+    gfx::Point m_priorPointerPosition;
+    // Set to true when user selects "ALL" frameviews.  Allows changing frame for all at once.
+    bool m_frameViews_isAllSelected;
 
 #if ENABLE_DEVMODE
     gfx::Rect m_perfInfoBounds;
